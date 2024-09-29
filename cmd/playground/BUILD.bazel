@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "playground_lib",
+    srcs = ["main.go"],
+    importpath = "try-out/cmd/playground",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@com_github_pingcap_log//:log",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@com_github_prometheus_client_golang//prometheus/promhttp",
+        "@org_golang_x_text//encoding/simplifiedchinese",
+        "@org_golang_x_text//encoding/unicode/utf32",
+        "@org_uber_go_zap//:zap",
+    ],
+)
+
+go_binary(
+    name = "playground",
+    embed = [":playground_lib"],
+    visibility = ["//visibility:public"],
+)

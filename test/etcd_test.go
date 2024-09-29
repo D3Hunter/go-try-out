@@ -47,10 +47,3 @@ func (*b) F() { fmt.Println("b") }
 func replace(tp *t) {
 	*tp = &b{}
 }
-
-func TestIf(tt *testing.T) {
-	x := &a{}
-	x.F()
-	replace((&x).(*t))
-	x.F()
-}

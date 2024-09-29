@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "heap-test_lib",
+    srcs = ["main.go"],
+    importpath = "try-out/cmd/heap-test",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "heap-test",
+    embed = [":heap-test_lib"],
+    visibility = ["//visibility:public"],
+)

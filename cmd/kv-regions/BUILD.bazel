@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "kv-regions_lib",
+    srcs = ["kv-regions.go"],
+    importpath = "try-out/cmd/kv-regions",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@com_github_pingcap_tidb//pkg/kv",
+        "@com_github_pingcap_tidb//pkg/tablecodec",
+        "@com_github_pingcap_tidb//pkg/util/codec",
+    ],
+)
+
+go_binary(
+    name = "kv-regions",
+    embed = [":kv-regions_lib"],
+    visibility = ["//visibility:public"],
+)

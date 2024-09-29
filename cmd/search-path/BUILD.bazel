@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "search-path_lib",
+    srcs = ["main.go"],
+    importpath = "try-out/cmd/search-path",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "search-path",
+    embed = [":search-path_lib"],
+    visibility = ["//visibility:public"],
+)

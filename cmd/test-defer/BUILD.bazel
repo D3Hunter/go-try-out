@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "test-defer_lib",
+    srcs = ["main.go"],
+    importpath = "try-out/cmd/test-defer",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "test-defer",
+    embed = [":test-defer_lib"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "github-crawl_lib",
+    srcs = ["main.go"],
+    importpath = "try-out/cmd/github-crawl",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/config",
+        "@com_github_go_lark_lark//:lark",
+        "@com_github_go_lark_lark//card",
+        "@com_github_google_go_github_v67//github",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+go_binary(
+    name = "github-crawl",
+    embed = [":github-crawl_lib"],
+    visibility = ["//visibility:public"],
+)

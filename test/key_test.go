@@ -1,12 +1,15 @@
-package main
+package test
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/pingcap/tidb/pkg/meta"
+	"github.com/pingcap/tidb/pkg/structure"
 	"github.com/pingcap/tidb/pkg/util/codec"
 	"github.com/stretchr/testify/require"
 )
@@ -34,4 +37,18 @@ func TestTiDBKey2TiKVFormat(t *testing.T) {
 		res.WriteString(octal)
 	}
 	t.Logf(res.String())
+}
+
+func TestEncodeKey(t *testing.T) {
+	for _, s := range []string{
+		"333334303032",
+		"3337393239303438",
+	} {
+		res, err := hex.DecodeString(s)
+		require.NoError(t, err)
+		fmt.Println(string(res))
+	}
+	txn := structure.NewStructure(nil, nil, []byte("m"))
+	key := txn.EncodeHashDataKey(meta.DBkey(167), meta.AutoIncrementIDKey(169))
+	fmt.Println(hex.EncodeToString(key))
 }

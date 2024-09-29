@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"context"
@@ -6,23 +6,18 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"path"
 	"strconv"
-	"syscall"
 	"testing"
 	"time"
 
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/sstable"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
-	gormmysql "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 func TestPebble(t *testing.T) {
@@ -122,67 +117,6 @@ func TestQueryMySQL(t *testing.T) {
 	queryAndPrint(t, conn, "select * from t WHERE TIMESTAMPDIFF(SECOND, updated_at, UTC_TIMESTAMP()) > 300.000000")
 	//executePsAndPrint(t, conn, "select * from t2 WHERE id > ?", 1)
 	//queryAndPrint(t, conn, "select * from t2 WHERE id > 1.000000")
-}
-
-func TestQueryMySQLGorm(t *testing.T) {
-	gormConfig := &gorm.Config{}
-
-	db, err := gorm.Open(gormmysql.Open("root:123456@tcp(127.0.0.1:4000)/dataflow"), gormConfig)
-	if err != nil {
-		panic(err)
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		panic(err)
-	}
-	conn, err := sqlDB.Conn(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
-	queryAndPrint(t, conn, "select version()")
-	queryAndPrint(t, conn, "SELECT * FROM `df_private_link_endpoints` WHERE TIMESTAMPDIFF(SECOND, updated_at, UTC_TIMESTAMP()) > 300.000000 AND phase = 'failed';")
-}
-
-func Test_insert_mysql(t *testing.T) {
-	//db, err := sql.Open("mysql", "root:123456@tcp(127.0.0.1:3307)/") //?parseTime=true&loc=Asia%2FShanghai
-	//db, err := sql.Open("mysql", "root:@tcp(172.16.102.104:4000)/test") //?parseTime=true&loc=Asia%2FShanghai
-	db, err := sql.Open("mysql", "root:@tcp(127.0.0.1:4100)/test") //?parseTime=true&loc=Asia%2FShanghai
-	//db, err := sql.Open("mysql", "root:12345678@tcp(tidb.ca17169f.1db98375.ap-southeast-1.prod.aws.tidbcloud.com:4000)/") //?parseTime=true&loc=Asia%2FShanghai
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-	for i := 0; i < 10000000000; i++ {
-		var j int
-		for {
-			start := time.Now()
-			_, err = db.ExecContext(context.Background(), "insert into foo values(1)")
-			err2 := errors.Cause(err)
-			switch nerr := err2.(type) {
-			case net.Error:
-				if nerr.Timeout() {
-					fmt.Println("timeout")
-				}
-				switch cause := nerr.(type) {
-				case *net.OpError:
-					syscallErr, ok := cause.Unwrap().(*os.SyscallError)
-					if ok {
-						fmt.Println(syscallErr.Err == syscall.ECONNREFUSED || syscallErr.Err == syscall.ECONNRESET)
-					}
-				}
-			}
-			if err2 != nil {
-				fmt.Println("db failed", i, j, err2, time.Since(start).Milliseconds())
-				//time.Sleep(100 * time.Millisecond)
-			} else {
-				fmt.Println("db success", i, j, time.Since(start).Milliseconds())
-				break
-			}
-			time.Sleep(5 * time.Millisecond)
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
 }
 
 func TestScanNil(t *testing.T) {

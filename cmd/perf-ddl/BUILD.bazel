@@ -1,0 +1,53 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "test-ddl_lib",
+    srcs = [
+        "analyze_log.go",
+        "create_databases.go",
+        "create_tables_on_single_db.go",
+        "hepler.go",
+        "init_multiple_tenants.go",
+        "main.go",
+        "table_level_ddl.go",
+    ],
+    importpath = "try-out/cmd/test-ddl",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/config",
+        "//pkg/tidb",
+        "@com_github_docker_go_units//:go-units",
+        "@com_github_go_sql_driver_mysql//:mysql",
+        "@org_golang_x_sync//errgroup",
+        "@org_uber_go_zap//:zap",
+    ],
+)
+
+go_binary(
+    name = "test-ddl",
+    embed = [":perf-ddl_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "perf-ddl_lib",
+    srcs = [
+        "analyze_log.go",
+        "create_databases.go",
+        "create_tables_on_single_db.go",
+        "hepler.go",
+        "init_multiple_tenants.go",
+        "main.go",
+        "table_level_ddl.go",
+    ],
+    importpath = "try-out/cmd/perf-ddl",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/config",
+        "//pkg/tidb",
+        "@com_github_docker_go_units//:go-units",
+        "@com_github_go_sql_driver_mysql//:mysql",
+        "@org_golang_x_sync//errgroup",
+        "@org_uber_go_zap//:zap",
+    ],
+)

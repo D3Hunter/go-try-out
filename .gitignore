@@ -27,3 +27,8 @@ go.work.sum
 .idea
 
 bin
+bazel-bin
+bazel-out
+bazel-testlogs
+bazel-try-out
+MODULE.bazel.lock

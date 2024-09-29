@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "write-hotspot_lib",
+    srcs = ["main.go"],
+    importpath = "try-out/cmd/write-hotspot",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/config",
+        "//pkg/tidb",
+        "@com_github_go_sql_driver_mysql//:mysql",
+        "@org_uber_go_zap//:zap",
+    ],
+)
+
+go_binary(
+    name = "write-hotspot",
+    embed = [":write-hotspot_lib"],
+    visibility = ["//visibility:public"],
+)

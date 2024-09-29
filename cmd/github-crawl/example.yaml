@@ -1,0 +1,9 @@
+bot-addr: https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxx
+
+repos:
+  - pingcap/tidb
+  - pingcap/tiflow
+
+users:
+  - D3Hunter:
+    - name: D3Hunter

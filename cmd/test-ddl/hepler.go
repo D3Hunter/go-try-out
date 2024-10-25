@@ -8,40 +8,8 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
+	"try-out/pkg/tidb"
 )
-
-func showVersion(db *sql.DB) error {
-	rs, err := db.Query("select tidb_version()")
-	if err != nil {
-		return err
-	}
-	defer rs.Close()
-	if rs.Next() {
-		var verStr string
-		if err := rs.Scan(&verStr); err != nil {
-			return err
-		}
-		fmt.Printf("TiDB version: %s\n", verStr)
-	}
-	return rs.Err()
-}
-
-func getAllDatabases(db *sql.DB) ([]string, error) {
-	rs, err := db.Query("show databases")
-	if err != nil {
-		return nil, err
-	}
-	defer rs.Close()
-	res := make([]string, 0, 100)
-	for rs.Next() {
-		var dbName string
-		if err = rs.Scan(&dbName); err != nil {
-			return nil, err
-		}
-		res = append(res, dbName)
-	}
-	return res, rs.Err()
-}
 
 var systemDatabases = map[string]struct{}{
 	"MYSQL":              {},
@@ -56,7 +24,7 @@ func prepareForDatabaseTest(db *sql.DB) error {
 	defer func() {
 		fmt.Printf("prepareForDatabaseTest takes %v\n", time.Since(start))
 	}()
-	dbs, err := getAllDatabases(db)
+	dbs, err := tidb.GetAllDatabases(db)
 	if err != nil {
 		return err
 	}
@@ -93,26 +61,7 @@ func cleanUp(host string, port, databaseCnt int, dbPrefix string) {
 	}
 }
 
-func prepareConnections(db *sql.DB, thread int) ([]*sql.Conn, error) {
-	dbconns := make([]*sql.Conn, 0, thread)
-
-	for i := 0; i < thread; i++ {
-		conn, err := db.Conn(context.Background())
-		if err != nil {
-			return nil, err
-		}
-		dbconns = append(dbconns, conn)
-	}
-	return dbconns, nil
-}
-
-func recycleConnections(conns []*sql.Conn) {
-	for _, conn := range conns {
-		conn.Close()
-	}
-}
-
-func truncateTable(db *sql.Conn, dbName string, idx int, tableCnt int) []time.Duration {
+func TruncateTable(db *sql.Conn, dbName string, idx int, tableCnt int) []time.Duration {
 	durations := make([]time.Duration, tableCnt)
 	for i := 0; i < tableCnt; i++ {
 		tableName := fmt.Sprintf("tb_%d_%d", idx, i)

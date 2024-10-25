@@ -6,6 +6,7 @@ go_library(
     importpath = "try-out/cmd/kv-regions",
     visibility = ["//visibility:private"],
     deps = [
+        "//pkg/constants",
         "@com_github_pingcap_tidb//pkg/kv",
         "@com_github_pingcap_tidb//pkg/tablecodec",
         "@com_github_pingcap_tidb//pkg/util/codec",

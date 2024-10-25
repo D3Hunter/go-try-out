@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"try-out/pkg/config"
+	"try-out/pkg/tidb"
 )
 
 func createDatabasesAction(db *sql.DB) result {
-	if globalCfg.databases%globalCfg.threads != 0 {
-		panic(fmt.Sprintf("databases(%d) should be a multiple of threads(%d)", globalCfg.databases, globalCfg.threads))
+	if config.GlobalCfg.Databases%config.GlobalCfg.Threads != 0 {
+		panic(fmt.Sprintf("databases(%d) should be a multiple of threads(%d)", config.GlobalCfg.Databases, config.GlobalCfg.Threads))
 	}
 	// wait log flushed
 	time.Sleep(2 * time.Second)
@@ -20,7 +23,7 @@ func createDatabasesAction(db *sql.DB) result {
 	createFn := func(conn *sql.Conn, idx int, cnt int) []time.Duration {
 		durations := make([]time.Duration, cnt)
 		for i := 0; i < cnt; i++ {
-			sql := fmt.Sprintf("create database %s_%d_%d", globalCfg.dbPrefix, idx, i)
+			sql := fmt.Sprintf("create database %s_%d_%d", config.GlobalCfg.DBPrefix, idx, i)
 			st := time.Now()
 			_, err := conn.ExecContext(context.Background(), sql)
 			if err != nil {
@@ -30,17 +33,17 @@ func createDatabasesAction(db *sql.DB) result {
 		}
 		return durations
 	}
-	conns, err := prepareConnections(db, globalCfg.threads)
-	defer recycleConnections(conns)
+	conns, err := tidb.PrepareConnections(db, config.GlobalCfg.Threads)
+	defer tidb.RecycleConnections(conns)
 	if err != nil {
 		panic(err)
 	}
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	start := time.Now()
-	dbPerThread := globalCfg.databases / globalCfg.threads
-	durations := make([]time.Duration, 0, globalCfg.databases)
-	for i := 0; i < globalCfg.threads; i++ {
+	dbPerThread := config.GlobalCfg.Databases / config.GlobalCfg.Threads
+	durations := make([]time.Duration, 0, config.GlobalCfg.Databases)
+	for i := 0; i < config.GlobalCfg.Threads; i++ {
 		idx := i
 		wg.Add(1)
 		go func() {
@@ -55,8 +58,8 @@ func createDatabasesAction(db *sql.DB) result {
 	wallTime := time.Since(start)
 
 	fmt.Printf("\ntotal created %d databases, wallTime: %v(%v per op)\n",
-		globalCfg.databases, wallTime.Round(time.Millisecond),
-		(wallTime / time.Duration(globalCfg.databases)).Round(time.Millisecond))
+		config.GlobalCfg.Databases, wallTime.Round(time.Millisecond),
+		(wallTime / time.Duration(config.GlobalCfg.Databases)).Round(time.Millisecond))
 	printPercentile("action", durations)
 
 	return result{

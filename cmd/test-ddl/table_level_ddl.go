@@ -7,16 +7,19 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"try-out/pkg/config"
+	"try-out/pkg/tidb"
 )
 
 func tableLevelDDLAction(db *sql.DB) result {
-	if !strings.Contains(globalCfg.tableDDLTemplate, "%s.%s") {
+	if !strings.Contains(config.GlobalCfg.TableDDLTemplate, "%s.%s") {
 		panic("tableDDLTemplate must contain '%s.%s'")
 	}
-	if globalCfg.tables%globalCfg.threads != 0 {
-		panic(fmt.Sprintf("tables(%d) should be a multiple of threads(%d)", globalCfg.tables, globalCfg.threads))
+	if config.GlobalCfg.Tables%config.GlobalCfg.Threads != 0 {
+		panic(fmt.Sprintf("tables(%d) should be a multiple of threads(%d)", config.GlobalCfg.Tables, config.GlobalCfg.Threads))
 	}
-	if globalCfg.databases != 1 {
+	if config.GlobalCfg.Databases != 1 {
 		panic("databases must be 1")
 	}
 
@@ -25,12 +28,12 @@ func tableLevelDDLAction(db *sql.DB) result {
 	executeStartTime := time.Now()
 	fmt.Println("execute start time: ", executeStartTime.Format(logTimeFormat))
 
-	totalTableCnt := globalCfg.tables
-	tablesPerThread := globalCfg.tables / globalCfg.threads
+	totalTableCnt := config.GlobalCfg.Tables
+	tablesPerThread := config.GlobalCfg.Tables / config.GlobalCfg.Threads
 	var mu sync.Mutex
 	durations := make([]time.Duration, 0, totalTableCnt)
 
-	dbconns, err := prepareConnections(db, globalCfg.threads)
+	dbconns, err := tidb.PrepareConnections(db, config.GlobalCfg.Threads)
 	if err != nil {
 		fmt.Printf("Failed to prepare connections: %v\n", err)
 		panic(err)
@@ -38,12 +41,12 @@ func tableLevelDDLAction(db *sql.DB) result {
 
 	start := time.Now()
 	var wg sync.WaitGroup
-	for j := 0; j < globalCfg.threads; j++ {
+	for j := 0; j < config.GlobalCfg.Threads; j++ {
 		idx := j
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			res := tableLevelDDL(dbconns[idx], globalCfg.databaseName, idx, tablesPerThread)
+			res := tableLevelDDL(dbconns[idx], config.GlobalCfg.DatabaseName, idx, tablesPerThread)
 			mu.Lock()
 			durations = append(durations, res...)
 			mu.Unlock()
@@ -52,7 +55,7 @@ func tableLevelDDLAction(db *sql.DB) result {
 	wg.Wait()
 	wallTime := time.Since(start)
 
-	recycleConnections(dbconns)
+	tidb.RecycleConnections(dbconns)
 
 	fmt.Printf("\ntotal done %d DDLs, walltime: %v(%v per DDL)\n",
 		totalTableCnt, wallTime.Round(time.Millisecond),
@@ -68,7 +71,7 @@ func tableLevelDDL(db *sql.Conn, dbName string, idx int, tableCnt int) []time.Du
 	durations := make([]time.Duration, tableCnt)
 	for i := 0; i < tableCnt; i++ {
 		tableName := fmt.Sprintf("tb_%d_%d", idx, i)
-		s := fmt.Sprintf(globalCfg.tableDDLTemplate, dbName, tableName)
+		s := fmt.Sprintf(config.GlobalCfg.TableDDLTemplate, dbName, tableName)
 		st := time.Now()
 		_, err := db.ExecContext(context.Background(), s)
 		if err != nil {

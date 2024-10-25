@@ -2,15 +2,15 @@ package main
 
 import (
 	"database/sql"
-	"flag"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"go.uber.org/zap"
+	"try-out/pkg/config"
+	"try-out/pkg/tidb"
 )
 
 var (
@@ -26,102 +26,56 @@ CREATE TABLE %s.%s (
 `
 )
 
-type config struct {
-	host    string
-	port    int
-	user    string
-	threads int
-	// total number of databases to create
-	databases int
-	// total number of tables to create
-	tables              int
-	action              string
-	dbPrefix            string
-	databaseName        string
-	tableDDLTemplate    string
-	skipPrepare         bool
-	analyzeLog          bool
-	logFile             string
-	analyzeStartTimeStr string
-	analyzeEndTimeStr   string
-}
-
-var (
-	globalCfg config
-	globalLog = zap.NewExample()
-)
-
-func initConfig() error {
-	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	fs.StringVar(&globalCfg.host, "host", "tc-tidb", "host")
-	fs.IntVar(&globalCfg.port, "port", 4000, "port")
-	fs.StringVar(&globalCfg.user, "user", "root", "user")
-	fs.IntVar(&globalCfg.threads, "threads", 8, "threads")
-	fs.IntVar(&globalCfg.databases, "databases", 1, "number of databases")
-	fs.IntVar(&globalCfg.tables, "tables", 1, "total number of tables")
-	fs.StringVar(&globalCfg.action, "action", "create-tables-on-single-db", "action")
-	fs.StringVar(&globalCfg.dbPrefix, "db-prefix", "db", "database prefix")
-	fs.StringVar(&globalCfg.databaseName, "database-name", "db", "database name")
-	fs.StringVar(&globalCfg.tableDDLTemplate, "table-ddl-template", "", "table ddl template")
-	fs.BoolVar(&globalCfg.skipPrepare, "skip-prepare", false, "skip prepare")
-	fs.BoolVar(&globalCfg.analyzeLog, "analyze-log", false, "analyze log")
-	fs.StringVar(&globalCfg.logFile, "log-file", "", "log file")
-	fs.StringVar(&globalCfg.analyzeStartTimeStr, "analyze-start-time", "", "analyze start time")
-	fs.StringVar(&globalCfg.analyzeEndTimeStr, "analyze-end-time", "", "analyze end time")
-
-	return fs.Parse(os.Args[1:])
-}
-
 type result struct {
 	startTime time.Time
 }
 
 func main() {
-	if err := initConfig(); err != nil {
+	if err := config.InitConfig(); err != nil {
 		fmt.Printf("Failed to parse command arguments: %v\n", err)
 		return
 	}
-	globalLog.Info("parameters", zap.String("host", globalCfg.host), zap.Int("port", globalCfg.port), zap.Int("threads", globalCfg.threads),
-		zap.Int("database", globalCfg.databases), zap.Int("tables", globalCfg.tables), zap.String("action", globalCfg.action))
+	config.GlobalLog.Info("parameters", zap.String("host", config.GlobalCfg.Host), zap.Int("port", config.GlobalCfg.Port), zap.Int("threads", config.GlobalCfg.Threads),
+		zap.Int("database", config.GlobalCfg.Databases), zap.Int("tables", config.GlobalCfg.Tables), zap.String("action", config.GlobalCfg.Action))
 
-	if globalCfg.action == "analyze-log" {
+	if config.GlobalCfg.Action == "analyze-log" {
 		time.Sleep(time.Second) // wait all logs flushed
-		if globalCfg.logFile == "" {
+		if config.GlobalCfg.LogFile == "" {
 			fmt.Println("log file is required for analyze-log")
 			return
 		}
-		analyzeStartTime, err := time.Parse(logTimeFormat, globalCfg.analyzeStartTimeStr)
+		analyzeStartTime, err := time.Parse(logTimeFormat, config.GlobalCfg.AnalyzeStartTimeStr)
 		if err != nil {
 			fmt.Println("failed to parse execute start time: ", err)
 			return
 		}
 		var analyzeEndTime time.Time
-		if globalCfg.analyzeEndTimeStr != "" {
-			analyzeEndTime, err = time.Parse(logTimeFormat, globalCfg.analyzeEndTimeStr)
+		if config.GlobalCfg.AnalyzeEndTimeStr != "" {
+			analyzeEndTime, err = time.Parse(logTimeFormat, config.GlobalCfg.AnalyzeEndTimeStr)
 			if err != nil {
 				fmt.Println("failed to parse execute end time: ", err)
 				return
 			}
 		}
-		if err := analyzeCallCost(analyzeStartTime, analyzeEndTime, globalCfg.logFile); err != nil {
+		if err := analyzeCallCost(analyzeStartTime, analyzeEndTime, config.GlobalCfg.LogFile); err != nil {
 			fmt.Printf("Failed to analyze log: %v\n", err)
 		}
 		return
 	}
 
-	db, err := sql.Open("mysql", fmt.Sprintf("%s@tcp(%s:%d)/", globalCfg.user, globalCfg.host, globalCfg.port))
+	db, err := sql.Open("mysql", fmt.Sprintf("%s@tcp(%s:%d)/", config.GlobalCfg.User, config.GlobalCfg.Host, config.GlobalCfg.Port))
 	if err != nil {
 		fmt.Printf("Failed to connect to MySQL database: %v\n", err)
 		return
 	}
 	defer db.Close()
-	if err := showVersion(db); err != nil {
+	if err := tidb.ShowVersion(db); err != nil {
 		fmt.Printf("Failed to show version: %v\n", err)
 		return
 	}
 
 	var res result
-	switch globalCfg.action {
+	switch config.GlobalCfg.Action {
 	case "create-tables-on-single-db":
 		res = createTablesOnSingleDBAction(db)
 	case "create-databases":
@@ -133,13 +87,13 @@ func main() {
 		res = tableLevelDDLAction(db)
 	}
 
-	if globalCfg.analyzeLog {
+	if config.GlobalCfg.AnalyzeLog {
 		time.Sleep(time.Second)
-		if globalCfg.logFile == "" {
+		if config.GlobalCfg.LogFile == "" {
 			fmt.Println("log file is required for analyze-log")
 			return
 		}
-		if err := analyzeCallCost(res.startTime, time.Time{}, globalCfg.logFile); err != nil {
+		if err := analyzeCallCost(res.startTime, time.Time{}, config.GlobalCfg.LogFile); err != nil {
 			fmt.Printf("Failed to analyze log: %v\n", err)
 		}
 		return

@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"try-out/pkg/config"
+	"try-out/pkg/tidb"
 )
 
 func prepareForTableTest(db *sql.DB, dbName string) {
@@ -24,15 +27,15 @@ func prepareForTableTest(db *sql.DB, dbName string) {
 }
 
 func createTablesOnSingleDBAction(db *sql.DB) result {
-	if globalCfg.tables%globalCfg.threads != 0 {
-		panic(fmt.Sprintf("tables(%d) should be a multiple of threads(%d)", globalCfg.tables, globalCfg.threads))
+	if config.GlobalCfg.Tables%config.GlobalCfg.Threads != 0 {
+		panic(fmt.Sprintf("tables(%d) should be a multiple of threads(%d)", config.GlobalCfg.Tables, config.GlobalCfg.Threads))
 	}
-	if globalCfg.databases != 1 {
+	if config.GlobalCfg.Databases != 1 {
 		panic("databases must be 1")
 	}
 
-	if !globalCfg.skipPrepare {
-		prepareForTableTest(db, globalCfg.databaseName)
+	if !config.GlobalCfg.SkipPrepare {
+		prepareForTableTest(db, config.GlobalCfg.DatabaseName)
 	}
 
 	// wait log flush
@@ -40,12 +43,12 @@ func createTablesOnSingleDBAction(db *sql.DB) result {
 	executeStartTime := time.Now()
 	fmt.Println("execute start time: ", executeStartTime.Format(logTimeFormat))
 
-	totalTableCnt := globalCfg.tables
-	tablesPerThread := globalCfg.tables / globalCfg.threads
+	totalTableCnt := config.GlobalCfg.Tables
+	tablesPerThread := config.GlobalCfg.Tables / config.GlobalCfg.Threads
 	var mu sync.Mutex
 	durations := make([]time.Duration, 0, totalTableCnt)
 
-	dbconns, err := prepareConnections(db, globalCfg.threads)
+	dbconns, err := tidb.PrepareConnections(db, config.GlobalCfg.Threads)
 	if err != nil {
 		fmt.Printf("Failed to prepare connections: %v\n", err)
 		panic(err)
@@ -53,12 +56,12 @@ func createTablesOnSingleDBAction(db *sql.DB) result {
 
 	start := time.Now()
 	var wg sync.WaitGroup
-	for j := 0; j < globalCfg.threads; j++ {
+	for j := 0; j < config.GlobalCfg.Threads; j++ {
 		idx := j
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			res := createTable(dbconns[idx], globalCfg.databaseName, idx, tablesPerThread)
+			res := createTable(dbconns[idx], config.GlobalCfg.DatabaseName, idx, tablesPerThread)
 			mu.Lock()
 			durations = append(durations, res...)
 			mu.Unlock()
@@ -67,7 +70,7 @@ func createTablesOnSingleDBAction(db *sql.DB) result {
 	wg.Wait()
 	wallTime := time.Since(start)
 
-	recycleConnections(dbconns)
+	tidb.RecycleConnections(dbconns)
 
 	fmt.Printf("\ntotal created %d tables, walltime: %v(%v per table)\n",
 		totalTableCnt, wallTime.Round(time.Millisecond),

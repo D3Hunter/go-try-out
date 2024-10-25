@@ -2014,15 +2014,9 @@ def go_dependencies():
         name = "com_github_pingcap_tidb",
         build_file_proto_mode = "disable_global",
         importpath = "github.com/pingcap/tidb",
-        sum = "h1:6VvmzD4NatExYP7A9GzBHW3WofrJiw532jJr0tIBFY8=",
-        version = "v1.1.0-beta.0.20240625062821-4a6f3e5daf37",
-    )
-    go_repository(
-        name = "com_github_pingcap_tidb_pkg_parser",
-        build_file_proto_mode = "disable_global",
-        importpath = "github.com/pingcap/tidb/pkg/parser",
-        sum = "h1:SP1wSq/SX0AX3cTXCe0MRf+Xl6VqxcIPxNmkxavdqos=",
-        version = "v0.0.0-20240625062821-4a6f3e5daf37",
+        remote = "https://github.com/pingcap/tidb",
+        vcs = "git",
+        commit = "4a6f3e5daf37",
     )
     go_repository(
         name = "com_github_pingcap_tipb",

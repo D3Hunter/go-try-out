@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"try-out/pkg/config"
+	"try-out/pkg/tidb"
 )
 
 func testInitMultipleTenantsAction(db *sql.DB) result {
-	if globalCfg.databases%globalCfg.threads != 0 {
-		panic(fmt.Sprintf("databases(%d) should be a multiple of threads(%d)", globalCfg.databases, globalCfg.threads))
+	if config.GlobalCfg.Databases%config.GlobalCfg.Threads != 0 {
+		panic(fmt.Sprintf("databases(%d) should be a multiple of threads(%d)", config.GlobalCfg.Databases, config.GlobalCfg.Threads))
 	}
-	if globalCfg.tables%globalCfg.databases != 0 {
-		panic(fmt.Sprintf("tables（%d) should be a multiple of databases(%d)", globalCfg.tables, globalCfg.databases))
+	if config.GlobalCfg.Tables%config.GlobalCfg.Databases != 0 {
+		panic(fmt.Sprintf("tables（%d) should be a multiple of databases(%d)", config.GlobalCfg.Tables, config.GlobalCfg.Databases))
 	}
 
 	// wait log flush
@@ -21,13 +24,13 @@ func testInitMultipleTenantsAction(db *sql.DB) result {
 	executeStartTime := time.Now()
 	fmt.Println("execute start time: ", executeStartTime.Format(logTimeFormat))
 
-	tablesPerDB := globalCfg.tables / globalCfg.databases
-	dbsPerThread := globalCfg.databases / globalCfg.threads
+	tablesPerDB := config.GlobalCfg.Tables / config.GlobalCfg.Databases
+	dbsPerThread := config.GlobalCfg.Databases / config.GlobalCfg.Threads
 	var mu sync.Mutex
-	createDBDurations := make([]time.Duration, 0, globalCfg.databases)
-	createTableDurations := make([]time.Duration, 0, globalCfg.tables)
+	createDBDurations := make([]time.Duration, 0, config.GlobalCfg.Databases)
+	createTableDurations := make([]time.Duration, 0, config.GlobalCfg.Tables)
 
-	dbconns, err := prepareConnections(db, globalCfg.threads)
+	dbconns, err := tidb.PrepareConnections(db, config.GlobalCfg.Threads)
 	if err != nil {
 		fmt.Printf("Failed to prepare connections: %v\n", err)
 		panic(err)
@@ -35,9 +38,9 @@ func testInitMultipleTenantsAction(db *sql.DB) result {
 
 	start := time.Now()
 	var wg sync.WaitGroup
-	for j := 0; j < globalCfg.threads; j++ {
+	for j := 0; j < config.GlobalCfg.Threads; j++ {
 		idx := j
-		threadDBPrefix := fmt.Sprintf("%s_%d", globalCfg.dbPrefix, idx)
+		threadDBPrefix := fmt.Sprintf("%s_%d", config.GlobalCfg.DBPrefix, idx)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -51,11 +54,11 @@ func testInitMultipleTenantsAction(db *sql.DB) result {
 	wg.Wait()
 	wallTime := time.Since(start)
 
-	recycleConnections(dbconns)
+	tidb.RecycleConnections(dbconns)
 
 	fmt.Printf("\ntotal created %d databases, %d tables, walltime: %v(%v per tenant)\n",
-		globalCfg.databases, globalCfg.tables, wallTime.Round(time.Millisecond),
-		(wallTime / time.Duration(globalCfg.databases)).Round(time.Millisecond))
+		config.GlobalCfg.Databases, config.GlobalCfg.Tables, wallTime.Round(time.Millisecond),
+		(wallTime / time.Duration(config.GlobalCfg.Databases)).Round(time.Millisecond))
 	printPercentile("create-database", createDBDurations)
 	printPercentile("create-table", createTableDurations)
 

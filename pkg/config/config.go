@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	Host    string
-	Port    int
-	User    string
-	Threads int
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Threads  int
 	// total number of databases to create
 	Databases int
 	// total number of tables to create
@@ -39,6 +40,7 @@ func InitConfig() error {
 	fs.StringVar(&GlobalCfg.Host, "host", "tc-tidb", "host")
 	fs.IntVar(&GlobalCfg.Port, "port", 4000, "port")
 	fs.StringVar(&GlobalCfg.User, "user", "root", "user")
+	fs.StringVar(&GlobalCfg.Password, "password", "", "password")
 	fs.IntVar(&GlobalCfg.Threads, "threads", 8, "threads")
 	fs.IntVar(&GlobalCfg.Databases, "databases", 1, "number of databases")
 	fs.IntVar(&GlobalCfg.Tables, "tables", 1, "total number of tables")

@@ -4,9 +4,32 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 )
 
 func ShowVersion(db *sql.DB) error {
+	rs, err := db.Query("select version()")
+	if err != nil {
+		return err
+	}
+	defer rs.Close()
+	var verStr string
+	if rs.Next() {
+		if err = rs.Scan(&verStr); err != nil {
+			return err
+		}
+		fmt.Printf("Version: %s\n", verStr)
+	}
+	if err = rs.Err(); err != nil {
+		return err
+	}
+	if strings.Contains(verStr, "-TiDB-") {
+		return showTiDBVersion(db)
+	}
+	return nil
+}
+
+func showTiDBVersion(db *sql.DB) error {
 	rs, err := db.Query("select tidb_version()")
 	if err != nil {
 		return err

@@ -74,7 +74,10 @@ func main() {
 		fmt.Printf("Failed to walk dir: %v\n", err)
 		return
 	}
-	db, err := sql.Open("mysql", fmt.Sprintf("%s@tcp(%s:%d)/?multiStatements=true", config.GlobalCfg.User, config.GlobalCfg.Host, config.GlobalCfg.Port))
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/",
+		config.GlobalCfg.User, config.GlobalCfg.Password,
+		config.GlobalCfg.Host, config.GlobalCfg.Port,
+	))
 	if err != nil {
 		fmt.Printf("Failed to connect to MySQL database: %v\n", err)
 		return

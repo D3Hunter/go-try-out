@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/concurrency"
 )
 
 func TestEtcdWatch(t *testing.T) {
@@ -30,6 +31,48 @@ func TestEtcdWatchPutWithoutChange(t *testing.T) {
 		require.NoError(t, err)
 		t.Log(string(bytes))
 	}
+}
+
+func TestEtcdLeaseDeleted(t *testing.T) {
+	client, err := clientv3.New(clientv3.Config{
+		Endpoints: []string{"http://localhost:2379"},
+	})
+	require.NoError(t, err)
+	session, err := concurrency.NewSession(client, concurrency.WithTTL(100))
+	require.NoError(t, err)
+	t.Logf("session id: %x", session.Lease())
+	<-session.Done()
+	t.Log("session done")
+	require.NoError(t, session.Close())
+}
+
+func TestEtcdDeleteAndPut(t *testing.T) {
+	client, err := clientv3.New(clientv3.Config{
+		Endpoints: []string{"http://localhost:2379"},
+	})
+	require.NoError(t, err)
+	ctx := context.Background()
+	prefix := "/ut/etcd/txn/"
+	_, err = client.Delete(ctx, prefix, clientv3.WithPrefix())
+	require.NoError(t, err)
+	for i := 0; i < 3; i++ {
+		_, err = client.Put(ctx, fmt.Sprintf("%s%d", prefix, i), "a")
+		require.NoError(t, err)
+	}
+	getResp, err := client.Get(ctx, prefix, clientv3.WithPrefix())
+	require.NoError(t, err)
+	require.Len(t, getResp.Kvs, 3)
+	newKey := prefix + "a"
+	_, err = client.Txn(ctx).
+		Then(
+			clientv3.OpDelete(prefix, clientv3.WithPrefix()),
+			clientv3.OpPut(newKey, "a"),
+		).Commit()
+	require.NoError(t, err)
+	getResp, err = client.Get(ctx, prefix+"/", clientv3.WithPrefix())
+	require.NoError(t, err)
+	require.Len(t, getResp.Kvs, 1)
+	require.EqualValues(t, newKey, string(getResp.Kvs[0].Key))
 }
 
 type t interface {

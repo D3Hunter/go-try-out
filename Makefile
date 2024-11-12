@@ -1,9 +1,12 @@
 
 test-ddl:
-	GOOS=linux GOARCH=amd64 go build -o bin/test-ddl cmd/test-ddl/*.go
+	go build -o bin/test-ddl cmd/test-ddl/*.go
+	GOOS=linux GOARCH=amd64 go build -o bin/test-ddl-linux-amd64 cmd/test-ddl/*.go
 
 write-hotspot:
-	GOOS=linux GOARCH=amd64 go build -o bin/write-hotspot cmd/write-hotspot/*.go
+	go build -o bin/write-hotspot cmd/write-hotspot/*.go
+	GOOS=linux GOARCH=amd64 go build -o bin/write-hotspot-linux-amd64 cmd/write-hotspot/*.go
 
 customer-create:
-	GOOS=linux GOARCH=amd64 go build -o bin/customer-create cmd/customer-create/*.go
+	go build -o bin/customer-create cmd/customer-create/*.go
+	GOOS=linux GOARCH=amd64 go build -o bin/customer-create-linux-amd64 cmd/customer-create/*.go

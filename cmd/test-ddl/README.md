@@ -1,3 +1,23 @@
+# Note
+
+The table template is fixed right now, it's hardcoded in the code.
+```sql
+CREATE TABLE %s.%s (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  k int(11) NOT NULL DEFAULT '0',
+  c char(120) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+  pad char(60) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+  PRIMARY KEY (id) /*T![clustered_index] CLUSTERED */,
+  KEY k_613 (k)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */
+```
+
+# Build
+
+```shell
+make test-ddl
+```
+
 # Common used commands for DDL operations
 
 create 100K tables inside a single database `aa` with 10 threads.

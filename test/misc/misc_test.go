@@ -1,16 +1,17 @@
-package test
+package misc
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/pingcap/tidb/pkg/kv"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+	"try-out/test"
 )
 
 func TestJsonMarshal(t *testing.T) {
@@ -23,7 +24,7 @@ func TestJsonMarshal(t *testing.T) {
 }
 
 func TestSetVarOnCompile(t *testing.T) {
-	t.Logf(TestVar)
+	t.Logf(test.TestVar)
 }
 
 type testAtomicStruct struct {
@@ -102,10 +103,25 @@ func TestDiff(t *testing.T) {
 	fmt.Println(diffs)
 }
 
-func TestPrintX(t *testing.T) {
-	data := []byte{0x74, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x6e, 0x5f, 0x72, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04}
-	fmt.Printf("%x\n", data)
-	k := kv.Key(data)
-	fmt.Printf("%x\n", k)
-	fmt.Printf("%x\n", 9223090561878065153)
+func TestLockWait(t *testing.T) {
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(10)
+	for i := 0; i < 10; i++ {
+		go func() {
+			defer wg.Done()
+			var accu time.Duration
+			for j := 0; j < 1<<16; j++ {
+				if j > 0 && j%100 == 0 {
+					fmt.Println("avg lock wait:", accu/time.Duration(j))
+				}
+				start := time.Now()
+				mu.Lock()
+				accu += time.Since(start)
+				time.Sleep(10 * time.Millisecond)
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
 }
